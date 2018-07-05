@@ -13288,6 +13288,11 @@ with pkgs;
       [ kernelPatches.bridge_stp_helper
         kernelPatches.cpu-cgroup-v2."4.4"
         kernelPatches.modinst_arg_list_too_long
+        # https://github.com/NixOS/nixpkgs/issues/42755
+        # Remove these xen-netfront patches once they're included in
+        # upstream! Fixes https://github.com/NixOS/nixpkgs/issues/42755
+        kernelPatches.xen-netfront_fix_mismatched_rtnl_unlock
+        kernelPatches.xen-netfront_update_features_after_registering_netdev
       ]
       ++ lib.optionals ((platform.kernelArch or null) == "mips")
       [ kernelPatches.mips_fpureg_emu
@@ -13301,6 +13306,11 @@ with pkgs;
       [ kernelPatches.bridge_stp_helper
         kernelPatches.cpu-cgroup-v2."4.9"
         kernelPatches.modinst_arg_list_too_long
+        # https://github.com/NixOS/nixpkgs/issues/42755
+        # Remove these xen-netfront patches once they're included in
+        # upstream! Fixes https://github.com/NixOS/nixpkgs/issues/42755
+        kernelPatches.xen-netfront_fix_mismatched_rtnl_unlock
+        kernelPatches.xen-netfront_update_features_after_registering_netdev
       ]
       ++ lib.optionals ((platform.kernelArch or null) == "mips")
       [ kernelPatches.mips_fpureg_emu
@@ -13316,6 +13326,11 @@ with pkgs;
         # when adding a new linux version
         kernelPatches.cpu-cgroup-v2."4.11"
         kernelPatches.modinst_arg_list_too_long
+        # https://github.com/NixOS/nixpkgs/issues/42755
+        # Remove these xen-netfront patches once they're included in
+        # upstream! Fixes https://github.com/NixOS/nixpkgs/issues/42755
+        kernelPatches.xen-netfront_fix_mismatched_rtnl_unlock
+        kernelPatches.xen-netfront_update_features_after_registering_netdev
       ]
       ++ lib.optionals ((platform.kernelArch or null) == "mips")
       [ kernelPatches.mips_fpureg_emu
@@ -13346,6 +13361,11 @@ with pkgs;
         # when adding a new linux version
         # kernelPatches.cpu-cgroup-v2."4.11"
         kernelPatches.modinst_arg_list_too_long
+        # https://github.com/NixOS/nixpkgs/issues/42755
+        # Remove these xen-netfront patches once they're included in
+        # upstream! Fixes https://github.com/NixOS/nixpkgs/issues/42755
+        kernelPatches.xen-netfront_fix_mismatched_rtnl_unlock
+        kernelPatches.xen-netfront_update_features_after_registering_netdev
       ]
       ++ lib.optionals ((platform.kernelArch or null) == "mips")
       [ kernelPatches.mips_fpureg_emu

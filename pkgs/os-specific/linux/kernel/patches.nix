@@ -83,4 +83,16 @@ rec {
     };
   };
 
+  # https://github.com/NixOS/nixpkgs/issues/42755
+  xen-netfront_fix_mismatched_rtnl_unlock = {
+    name = "xen-netfront_fix_mismatched_rtnl_unlock";
+    patch = ./xen-netfront_fix_mismatched_rtnl_unlock.patch;
+  };
+
+  # https://github.com/NixOS/nixpkgs/issues/42755
+  xen-netfront_update_features_after_registering_netdev = {
+    name = "xen-netfront_update_features_after_registering_netdev";
+    patch = ./xen-netfront_update_features_after_registering_netdev.patch;
+  };
+
 }
