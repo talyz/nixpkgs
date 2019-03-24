@@ -157,6 +157,10 @@ let
     buildInputs = with pkgs; [ cyrus_sasl zlib ];
   };
 
+  language-server = pkgs.callPackage ../development/php-packages/language-server {
+    inherit php buildComposerEnv;
+  };
+
   oci8 = buildPecl rec {
     name = "oci8-2.1.8";
     sha256 = "1bp6fss2f2qmd5bdk7x22j8vx5qivrdhz4x7csf29vjgj6gvchxy";
