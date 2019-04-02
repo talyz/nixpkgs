@@ -1,18 +1,14 @@
 { pkgs, buildComposerEnv, php, noDev ? true }:
 
-let
-  langServerPkg = import ./php-packages.nix {
-    composerEnv = buildComposerEnv;
-    inherit (pkgs) fetchurl fetchgit fetchhg fetchsvn;
-  };
-in buildComposerEnv.buildPackage rec {
+buildComposerEnv.buildPackage rec {
   inherit noDev;
-  inherit (langServerPkg) packages devPackages;
 
   pname = "php-language-server";
   version = "5.4.6";
 
   src = ./.;
+
+  composerLock = ./composer.lock;
 
   executable = true;
   symlinkDependencies = false;

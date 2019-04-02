@@ -1,26 +1,12 @@
 # This file originates from composer2nix
 
-{ stdenv, makeWrapper, writeTextFile, fetchurl, php, unzip, composer }:
+{ stdenv, pkgs, lib, makeWrapper, writeTextFile, fetchurl, php, unzip, composer }:
 
 let
-  buildZipPackage = { name, src }:
-    stdenv.mkDerivation {
-      inherit name src;
-      buildInputs = [ unzip ];
-      buildCommand = ''
-        unzip $src
-        baseDir=$(find . -type d -mindepth 1 -maxdepth 1)
-        cd $baseDir
-        mkdir -p $out
-        mv * $out
-      '';
-    };
-
   buildPackage =
     { pname
     , src
-    , packages ? {}
-    , devPackages ? {}
+    , composerLock
     , buildInputs ? []
     , symlinkDependencies ? false
     , executable ? false
@@ -32,6 +18,32 @@ let
     , ...}@args:
 
     let
+      buildZipPackage = { name, vendor, src }:
+        stdenv.mkDerivation {
+          inherit name vendor src;
+          buildInputs = [ pkgs.unzip ];
+          buildCommand = ''
+            unzip $src
+            baseDir=$(find . -mindepth 1 -maxdepth 1 -type d)
+            cd $baseDir
+            mkdir -p $out
+            mv * $out
+          '';
+        };
+
+      buildPackageList = map (pkg:
+        let
+          nameAndVendor = builtins.match "(.*)/(.*)" pkg.name;
+        in
+          buildZipPackage {
+            vendor = builtins.elemAt nameAndVendor 0;
+            name = builtins.elemAt nameAndVendor 1;
+            src = builtins.fetchurl { inherit (pkg.dist) url; };
+          });
+      composerLockAttrs = lib.importJSON composerLock;
+      packages = buildPackageList composerLockAttrs.packages;
+      devPackages = buildPackageList composerLockAttrs.packages-dev;
+
       reconstructInstalled = writeTextFile {
         name = "reconstructinstalled.php";
         executable = true;
@@ -50,7 +62,7 @@ let
 
               $allPackages = array_key_exists("packages", $config) ? $config["packages"] : array();
 
-              ${stdenv.lib.optionalString (!noDev) ''
+              ${lib.optionalString (!noDev) ''
               if (array_key_exists("packages-dev", $config)) {
                   $allPackages = array_merge($allPackages, $config["packages-dev"]);
               }
@@ -93,29 +105,16 @@ let
       };
 
       bundleDependencies = dependencies:
-        stdenv.lib.concatMapStrings (dependencyName:
-          let
-            dependency = dependencies.${dependencyName};
-          in
-          ''
-            ${if dependency.targetDir == "" then ''
-              vendorDir="$(dirname ${dependencyName})"
-              mkdir -p "$vendorDir"
-              ${if symlinkDependencies then
-                ''ln -s "${dependency.src}" "$vendorDir/$(basename "${dependencyName}")"''
-                else
-                ''cp -av "${dependency.src}" "$vendorDir/$(basename "${dependencyName}")"''
+        lib.concatMapStrings
+          (dependency: ''
+             mkdir -p "${dependency.vendor}"
+             ${if symlinkDependencies then
+               ''ln -s "${dependency}" "${dependency.vendor}/${dependency.name}"''
+               else
+               ''cp -a "${dependency}" "${dependency.vendor}/${dependency.name}"''
               }
-            '' else ''
-              namespaceDir="${dependencyName}/$(dirname "${dependency.targetDir}")"
-              mkdir -p "$namespaceDir"
-              ${if symlinkDependencies then
-                ''ln -s "${dependency.src}" "$namespaceDir/$(basename "${dependency.targetDir}")"''
-              else
-                ''cp -av "${dependency.src}" "$namespaceDir/$(basename "${dependency.targetDir}")"''
-              }
-            ''}
-          '') (builtins.attrNames dependencies);
+            '')
+          dependencies;
 
       extraArgs = removeAttrs args [ "name" "packages" "devPackages" "buildInputs" ];
     in
@@ -128,11 +127,11 @@ let
       installPhase = ''
         ${if executable then ''
           mkdir -p $out/share/php
-          cp -av $src $out/share/php/$name
+          cp -a $src $out/share/php/$name
           chmod -R u+w $out/share/php/$name
           cd $out/share/php/$name
         '' else ''
-          cp -av $src $out
+          cp -a $src $out
           chmod -R u+w $out
           cd $out
         ''}
@@ -164,24 +163,24 @@ let
         # Copy or symlink the provided dependencies
         cd vendor
         ${bundleDependencies packages}
-        ${stdenv.lib.optionalString (!noDev) (bundleDependencies devPackages)}
+        ${lib.optionalString (!noDev) (bundleDependencies devPackages)}
         cd ..
 
         # Reconstruct autoload scripts
         # We use the optimize feature because Nix packages cannot change after they have been built
         # Using the dynamic loader for a Nix package is useless since there is nothing to dynamically reload.
-        composer dump-autoload --optimize ${stdenv.lib.optionalString noDev "--no-dev"}
+        composer dump-autoload --optimize ${lib.optionalString noDev "--no-dev"}
 
         # Run the install step as a validation to confirm that everything works out as expected
-        composer install --optimize-autoloader ${stdenv.lib.optionalString noDev "--no-dev"}
+        composer install --optimize-autoloader ${lib.optionalString noDev "--no-dev"}
 
-        ${stdenv.lib.optionalString executable ''
+        ${lib.optionalString executable ''
           # Reconstruct the bin/ folder if we deploy an executable project
           ${constructBin} composer.json
           ln -s $(pwd)/vendor/bin $out/bin
         ''}
 
-        ${stdenv.lib.optionalString (!symlinkDependencies) ''
+        ${lib.optionalString (!symlinkDependencies) ''
           # Patch the shebangs if possible
           if [ -d $(pwd)/vendor/bin ]
           then
@@ -216,7 +215,6 @@ let
     '';
   } // extraArgs);
 in {
-  composer = stdenv.lib.makeOverridable composer;
-  buildZipPackage = stdenv.lib.makeOverridable buildZipPackage;
-  buildPackage = stdenv.lib.makeOverridable buildPackage;
+  composer = lib.makeOverridable composer;
+  buildPackage = lib.makeOverridable buildPackage;
 }

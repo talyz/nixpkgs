@@ -7,9 +7,9 @@ let
       inherit (pkgs) stdenv autoreconfHook fetchurl;
     };
 
-    buildComposerEnv = import ../build-support/build-composer {
+    buildComposerEnv = pkgs.callPackage ../build-support/build-composer {
       inherit php composer;
-      inherit (pkgs) stdenv makeWrapper writeTextFile fetchurl unzip;
+      # inherit (pkgs) stdenv makeWrapper writeTextFile fetchurl unzip;
     };
 
   isPhp73 = pkgs.lib.versionAtLeast php.version "7.3";
