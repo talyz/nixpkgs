@@ -186,6 +186,31 @@ let
     end
   '';
 
+  # Recursively get attrs with a name matching the "attr" parameter.
+  recursiveGetAttrWithJqPrefix = set: attr:
+    let
+      recurse = prefix: item:
+        if item ? ${attr} then
+          nameValuePair prefix item.${attr}
+        else if isAttrs item then
+          map (name: recurse (prefix + "." + name) item.${name}) (attrNames item)
+        else if isList item then
+          imap0 (index: item: recurse (prefix + "[${toString index}]") item) item
+        else
+          [];
+    in listToAttrs (flatten (map (name: recurse name set.${name}) (attrNames set)));
+
+  genSecretsReplacementSnippet = set: input: output:
+      concatStringsSep
+        "\n"
+        (imap1 (index: name: "secret${toString index}=$(<${set.${name}})")
+               (attrNames set)) + "\n"
+      + "${pkgs.jq}/bin/jq <'${input}' >'${output}' '"
+      + concatStringsSep
+          " | "
+          (imap1 (index: name: ''.${name} = "$ENV.secret${toString index}"'')
+                 (attrNames set)) + "'";
+
 in {
 
   options = {
@@ -512,7 +537,7 @@ in {
         type = with types; nullOr str;
         default = null;
         description = ''
-          A file containging the secret used to encrypt session
+          A file containing the secret used to encrypt session
           keys. If you change or lose this key, users will be
           disconnected.
 
@@ -536,6 +561,11 @@ in {
         description = ''
           Extra options to be merged into config/gitlab.yml as nix
           attribute set.
+
+          Options containing secret data should be set to an attrset
+          containing the attribute _secret pointing to a file
+          containing the value the option should be set to.
+
         '';
       };
     };
@@ -626,7 +656,6 @@ in {
 
       "L+ /run/gitlab/shell-config.yml - - - - ${pkgs.writeText "config.yml" (builtins.toJSON gitlabShellConfig)}"
 
-      "L+ ${cfg.statePath}/config/gitlab.yml - - - - ${pkgs.writeText "gitlab.yml" (builtins.toJSON gitlabConfig)}"
       "L+ ${cfg.statePath}/config/unicorn.rb - - - - ${./defaultUnicornConfig.rb}"
 
       "L+ ${cfg.statePath}/config/initializers/extra-gitlab.rb - - - - ${extraGitlabRb}"
@@ -741,6 +770,13 @@ in {
 
         (
           umask u=r,g=,o=
+
+          ${genSecretsReplacementSnippet
+              (recursiveGetAttrWithJqPrefix gitlabConfig "_secret")
+              (pkgs.writeText "gitlab.yml" (builtins.toJSON (filterAttrsRecursive (n: v: !(v ? "_secret")) gitlabConfig)))
+              "${cfg.statePath}/config/gitlab.yml"
+          }
+
           export secret="${if cfg.secrets.secretFile != null then "$(<'${cfg.secrets.secretFile}')" else cfg.secrets.secret}"
           export db="${if cfg.secrets.dbFile != null then "$(<'${cfg.secrets.dbFile}')" else cfg.secrets.db}"
           export otp="${if cfg.secrets.otpFile != null then "$(<'${cfg.secrets.otpFile}')" else cfg.secrets.otp}"
