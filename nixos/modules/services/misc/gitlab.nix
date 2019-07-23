@@ -756,8 +756,6 @@ in {
         ${pkgs.sudo}/bin/sudo -u ${cfg.user} cp -rf --no-preserve=mode ${cfg.packages.gitlab}/share/gitlab/config.dist/* ${cfg.statePath}/config
         ${pkgs.sudo}/bin/sudo -u ${cfg.user} cp -rf --no-preserve=mode ${cfg.packages.gitlab}/share/gitlab/db/* ${cfg.statePath}/db
 
-        ${pkgs.openssl}/bin/openssl rand -hex 32 > ${cfg.statePath}/gitlab_shell_secret
-
         ${pkgs.sudo}/bin/sudo -u ${cfg.user} ${cfg.packages.gitlab-shell}/bin/install
 
         ${optionalString cfg.smtp.enable ''
@@ -770,6 +768,8 @@ in {
 
         (
           umask u=r,g=,o=
+
+          ${pkgs.openssl}/bin/openssl rand -hex 32 > ${cfg.statePath}/gitlab_shell_secret
 
           ${genSecretsReplacementSnippet
               (recursiveGetAttrWithJqPrefix gitlabConfig "_secret")
