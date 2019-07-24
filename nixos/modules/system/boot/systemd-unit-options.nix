@@ -263,13 +263,44 @@ in rec {
       description = "Shell commands executed as the service's main process.";
     };
 
+    scriptFullPrivileges = mkOption {
+      type = types.lines;
+      default = "";
+
+      description = ''
+
+        Shell commands executed as the service's main process with
+        full privileges. See the description of
+        <parameter>+</parameter> in <literal>Table 1</literal>,
+        <citerefentry><refentrytitle>systemd.service</refentrytitle>
+        <manvolnum>5</manvolnum></citerefentry> for details.
+
+      '';
+
+    };
+
     scriptArgs = mkOption {
       type = types.str;
       default = "";
       description = "Arguments passed to the main process script.";
     };
 
+    scriptArgsFullPrivileges = mkOption {
+      type = types.str;
+      default = "";
+      description = "Arguments passed to the main process script.";
+    };
+
     preStart = mkOption {
+      type = types.lines;
+      default = "";
+      description = ''
+        Shell commands executed before the service's main process
+        is started.
+      '';
+    };
+
+    preStartFullPrivileges = mkOption {
       type = types.lines;
       default = "";
       description = ''
@@ -287,7 +318,25 @@ in rec {
       '';
     };
 
+    postStartFullPrivileges = mkOption {
+      type = types.lines;
+      default = "";
+      description = ''
+        Shell commands executed after the service's main process
+        is started.
+      '';
+    };
+
     reload = mkOption {
+      type = types.lines;
+      default = "";
+      description = ''
+        Shell commands executed when the service's main process
+        is reloaded.
+      '';
+    };
+
+    reloadFullPrivileges = mkOption {
       type = types.lines;
       default = "";
       description = ''
@@ -304,7 +353,24 @@ in rec {
       '';
     };
 
+    preStopFullPrivileges = mkOption {
+      type = types.lines;
+      default = "";
+      description = ''
+        Shell commands executed to stop the service.
+      '';
+    };
+
     postStop = mkOption {
+      type = types.lines;
+      default = "";
+      description = ''
+        Shell commands executed after the service's main process
+        has exited.
+      '';
+    };
+
+    postStopFullPrivileges = mkOption {
       type = types.lines;
       default = "";
       description = ''
