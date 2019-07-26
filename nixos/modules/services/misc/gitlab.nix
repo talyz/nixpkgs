@@ -19,10 +19,6 @@ let
       adapter = "postgresql";
       database = cfg.databaseName;
       host = cfg.databaseHost;
-      password = if cfg.databasePasswordFile != null then
-                   "@databasePassword@"
-                 else
-                   cfg.databasePassword;
       username = cfg.databaseUsername;
       encoding = "utf8";
       pool = cfg.databasePool;
@@ -373,9 +369,17 @@ in {
       };
 
       initialRootPassword = mkOption {
-        type = types.str;
+        type = with types; nullOr str;
         description = ''
           Initial password of the root account if this is a new install.
+        '';
+      };
+
+      initialRootPasswordFile = mkOption {
+        type = with types; nullOr str;
+        description = ''
+          File containing the initial password of the root account if
+          this is a new install.
         '';
       };
 
@@ -579,6 +583,10 @@ in {
         message = "Only one of services.gitlab.smtp.password or services.gitlab.smtpPasswordFile should be set.";
       }
       {
+        assertion = (cfg.initialRootPassword != null) != (cfg.initialRootPasswordFile != null);
+        message = "One and only one of services.gitlab.initialRootPassword or services.gitlab.initialRootPasswordFile should be set.";
+      }
+      {
         assertion = (cfg.databasePassword != null) != (cfg.databasePasswordFile != null);
         message = "One and only one of services.gitlab.databasePassword or services.gitlab.databasePasswordFile should be set.";
       }
@@ -751,12 +759,12 @@ in {
         gnupg
       ];
       preStart = ''
-        ${pkgs.sudo}/bin/sudo -u ${cfg.user} cp -f ${cfg.packages.gitlab}/share/gitlab/VERSION ${cfg.statePath}/VERSION
-        ${pkgs.sudo}/bin/sudo -u ${cfg.user} rm -rf ${cfg.statePath}/db/*
-        ${pkgs.sudo}/bin/sudo -u ${cfg.user} cp -rf --no-preserve=mode ${cfg.packages.gitlab}/share/gitlab/config.dist/* ${cfg.statePath}/config
-        ${pkgs.sudo}/bin/sudo -u ${cfg.user} cp -rf --no-preserve=mode ${cfg.packages.gitlab}/share/gitlab/db/* ${cfg.statePath}/db
+        cp -f ${cfg.packages.gitlab}/share/gitlab/VERSION ${cfg.statePath}/VERSION
+        rm -rf ${cfg.statePath}/db/*
+        cp -rf --no-preserve=mode ${cfg.packages.gitlab}/share/gitlab/config.dist/* ${cfg.statePath}/config
+        cp -rf --no-preserve=mode ${cfg.packages.gitlab}/share/gitlab/db/* ${cfg.statePath}/db
 
-        ${pkgs.sudo}/bin/sudo -u ${cfg.user} ${cfg.packages.gitlab-shell}/bin/install
+        ${cfg.packages.gitlab-shell}/bin/install
 
         ${optionalString cfg.smtp.enable ''
           install -m u=rw ${smtpSettings} ${cfg.statePath}/config/initializers/smtp_settings.rb
@@ -767,7 +775,7 @@ in {
         ''}
 
         (
-          umask u=r,g=,o=
+          umask u=rwx,g=,o=
 
           ${pkgs.openssl}/bin/openssl rand -hex 32 > ${cfg.statePath}/gitlab_shell_secret
 
@@ -786,53 +794,48 @@ in {
                                               db_key_base: $ENV.otp,
                                               openid_connect_signing_key: $ENV.jws}}' \
                             > '${cfg.statePath}/config/secrets.yml'
-
-          ${if cfg.databasePasswordFile != null then ''
-              export db_password="$(<'${cfg.databasePasswordFile}')"
-              ${pkgs.jq}/bin/jq <${pkgs.writeText "database.yml" (builtins.toJSON databaseConfig)} \
-                                '.production.password = $ENV.db_password' \
-                                >'${cfg.statePath}/config/database.yml' 
-            ''
-            else ''
-              ln -sf ${pkgs.writeText "database.yml" (builtins.toJSON databaseConfig)} '${cfg.statePath}/config/database.yml'
-            ''              
-          }
-          
-          chown -R ${cfg.user}:${cfg.group} ${cfg.statePath}
         )
-
-        if ! test -e "${cfg.statePath}/db-created"; then
-          if [ "${cfg.databaseHost}" = "127.0.0.1" ]; then
-            db_password="${if cfg.databasePasswordFile != null then "$(<'${cfg.databasePasswordFile}')" else cfg.databasePassword}"
-            ${pkgs.sudo}/bin/sudo -u ${pgSuperUser} psql postgres -c "CREATE ROLE ${cfg.databaseUsername} WITH LOGIN NOCREATEDB NOCREATEROLE ENCRYPTED PASSWORD '$db_password'"
-            ${pkgs.sudo}/bin/sudo -u ${pgSuperUser} ${config.services.postgresql.package}/bin/createdb --owner ${cfg.databaseUsername} ${cfg.databaseName}
-
-            # enable required pg_trgm extension for gitlab
-            ${pkgs.sudo}/bin/sudo -u ${pgSuperUser} psql ${cfg.databaseName} -c "CREATE EXTENSION IF NOT EXISTS pg_trgm"
-          fi
-
-          ${pkgs.sudo}/bin/sudo -u ${cfg.user} -H ${gitlab-rake}/bin/gitlab-rake db:schema:load
-
-          ${pkgs.sudo}/bin/sudo -u ${cfg.user} touch "${cfg.statePath}/db-created"
-        fi
-
-        # Always do the db migrations just to be sure the database is up-to-date
-        ${pkgs.sudo}/bin/sudo -u ${cfg.user} -H ${gitlab-rake}/bin/gitlab-rake db:migrate
-
-        if ! test -e "${cfg.statePath}/db-seeded"; then
-          ${pkgs.sudo}/bin/sudo -u ${cfg.user} ${gitlab-rake}/bin/gitlab-rake db:seed_fu \
-            GITLAB_ROOT_PASSWORD='${cfg.initialRootPassword}' GITLAB_ROOT_EMAIL='${cfg.initialRootEmail}'
-          ${pkgs.sudo}/bin/sudo -u ${cfg.user} touch "${cfg.statePath}/db-seeded"
-        fi
 
         # We remove potentially broken links to old gitlab-shell versions
         rm -f ${cfg.statePath}/repositories/**/*.git/hooks
 
-        ${pkgs.sudo}/bin/sudo -u ${cfg.user} -H ${pkgs.git}/bin/git config --global core.autocrlf "input"
+        ${pkgs.git}/bin/git config --global core.autocrlf "input"
+      '';
+
+      preStartFullPrivileges = ''
+        umask u=rwx,g=,o=
+
+        export db_password="${if cfg.databasePasswordFile != null then "$(<'${cfg.databasePasswordFile}')" else cfg.databasePassword}"
+
+        ${pkgs.jq}/bin/jq <${pkgs.writeText "database.yml" (builtins.toJSON databaseConfig)} \
+                          '.production.password = $ENV.db_password' \
+                          >'${cfg.statePath}/config/database.yml' 
+        chown ${cfg.user}:${cfg.group} '${cfg.statePath}/config/database.yml'
+
+        if [ "${cfg.databaseHost}" = "127.0.0.1" ]; then
+          if ! ${pkgs.sudo}/bin/sudo -u ${pgSuperUser} \
+                 psql postgres -c "SELECT usename FROM pg_user WHERE usename = '${cfg.databaseUsername}'" | grep ${cfg.databaseUsername} > /dev/null
+          then
+            ${pkgs.sudo}/bin/sudo -u ${pgSuperUser} \
+              psql postgres -c "CREATE ROLE ${cfg.databaseUsername} WITH LOGIN NOCREATEDB NOCREATEROLE ENCRYPTED PASSWORD '$db_password'"
+          fi
+          if ! ${pkgs.sudo}/bin/sudo -u ${pgSuperUser} \
+                 psql postgres -c "SELECT datname FROM pg_database WHERE datname = '${cfg.databaseName}'" | grep ${cfg.databaseName} > /dev/null
+          then
+            ${pkgs.sudo}/bin/sudo -u ${pgSuperUser} ${config.services.postgresql.package}/bin/createdb --owner ${cfg.databaseUsername} ${cfg.databaseName}
+          fi
+          
+          # enable required pg_trgm extension for gitlab
+          ${pkgs.sudo}/bin/sudo -u ${pgSuperUser} psql ${cfg.databaseName} -c "CREATE EXTENSION IF NOT EXISTS pg_trgm"
+        fi
+
+        initial_root_password="${if cfg.initialRootPasswordFile != null then "$(<'${cfg.initialRootPasswordFile}')" else cfg.initialRootPassword}"
+        ${pkgs.sudo}/bin/sudo -u ${cfg.user} \
+          ${gitlab-rake}/bin/gitlab-rake gitlab:db:configure GITLAB_ROOT_PASSWORD='${cfg.initialRootPassword}' \
+                                                             GITLAB_ROOT_EMAIL='${cfg.initialRootEmail}'
       '';
 
       serviceConfig = {
-        PermissionsStartOnly = true; # preStart must be run as root
         Type = "simple";
         User = cfg.user;
         Group = cfg.group;
