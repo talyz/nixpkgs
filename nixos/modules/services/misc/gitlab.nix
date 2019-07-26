@@ -640,6 +640,7 @@ in {
       "d ${cfg.statePath} 0750 ${cfg.user} ${cfg.group} -"
       "d ${cfg.statePath}/builds 0750 ${cfg.user} ${cfg.group} -"
       "d ${cfg.statePath}/config 0750 ${cfg.user} ${cfg.group} -"
+      "d ${cfg.statePath}/config/initializers 0750 ${cfg.user} ${cfg.group} -"
       "d ${cfg.statePath}/db 0750 ${cfg.user} ${cfg.group} -"
       "d ${cfg.statePath}/log 0750 ${cfg.user} ${cfg.group} -"
       "d ${cfg.statePath}/repositories 2770 ${cfg.user} ${cfg.group} -"
@@ -665,7 +666,6 @@ in {
       "L+ /run/gitlab/shell-config.yml - - - - ${pkgs.writeText "config.yml" (builtins.toJSON gitlabShellConfig)}"
 
       "L+ ${cfg.statePath}/config/unicorn.rb - - - - ${./defaultUnicornConfig.rb}"
-
       "L+ ${cfg.statePath}/config/initializers/extra-gitlab.rb - - - - ${extraGitlabRb}"
     ];
 
