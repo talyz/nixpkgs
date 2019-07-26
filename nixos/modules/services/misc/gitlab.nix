@@ -203,12 +203,12 @@ let
   genSecretsReplacementSnippet = set: input: output:
       concatStringsSep
         "\n"
-        (imap1 (index: name: "secret${toString index}=$(<${set.${name}})")
+        (imap1 (index: name: "export secret${toString index}=$(<'${set.${name}}')")
                (attrNames set)) + "\n"
       + "${pkgs.jq}/bin/jq <'${input}' >'${output}' '"
       + concatStringsSep
           " | "
-          (imap1 (index: name: ''.${name} = "$ENV.secret${toString index}"'')
+          (imap1 (index: name: ''.${name} = $ENV.secret${toString index}'')
                  (attrNames set)) + "'";
 
 in {
@@ -773,7 +773,7 @@ in {
 
           ${genSecretsReplacementSnippet
               (recursiveGetAttrWithJqPrefix gitlabConfig "_secret")
-              (pkgs.writeText "gitlab.yml" (builtins.toJSON (filterAttrsRecursive (n: v: !(v ? "_secret")) gitlabConfig)))
+              (pkgs.writeText "gitlab.yml" (builtins.toJSON gitlabConfig))
               "${cfg.statePath}/config/gitlab.yml"
           }
 
