@@ -280,7 +280,7 @@ let
         (mkIf (config.preStartFullPrivileges != "")
           { serviceConfig.ExecStartPre = singleton ("+" + makeJobScript "${name}-pre-start-full-privileges" ''
               #! ${pkgs.runtimeShell} -e
-              ${config.preStart}
+              ${config.preStartFullPrivileges}
             '');
           })
         (mkIf (config.scriptFullPrivileges != "")
@@ -292,25 +292,25 @@ let
         (mkIf (config.postStartFullPrivileges != "")
           { serviceConfig.ExecStartPost = singleton ("+" + makeJobScript "${name}-post-start-full-privileges" ''
               #! ${pkgs.runtimeShell} -e
-              ${config.postStart}
+              ${config.postStartFullPrivileges}
             '');
           })
         (mkIf (config.reloadFullPrivileges != "")
           { serviceConfig.ExecReload = singleton ("+" + makeJobScript "${name}-reload-full-privileges" ''
               #! ${pkgs.runtimeShell} -e
-              ${config.reload}
+              ${config.reloadFullPrivileges}
             '');
           })
         (mkIf (config.preStopFullPrivileges != "")
           { serviceConfig.ExecStop = singleton ("+" + makeJobScript "${name}-pre-stop-full-privileges" ''
               #! ${pkgs.runtimeShell} -e
-              ${config.preStop}
+              ${config.preStopFullPrivileges}
             '');
           })
         (mkIf (config.postStopFullPrivileges != "")
           { serviceConfig.ExecStopPost = singleton ("+" + makeJobScript "${name}-post-stop-full-privileges" ''
               #! ${pkgs.runtimeShell} -e
-              ${config.postStop}
+              ${config.postStopFullPrivileges}
             '');
           })
       ];
