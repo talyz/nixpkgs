@@ -230,12 +230,7 @@ in
 
     services.postgresql = optionalAttrs pgsqlLocal {
       enable = true;
-      ensureDatabases = [ cfg.database.name ];
-      ensureUsers = [
-        { name = cfg.database.user;
-          ensurePermissions = { "DATABASE ${cfg.database.name}" = "ALL PRIVILEGES"; };
-        }
-      ];
+      createDatabases.${cfg.database.name}.owner = cfg.database.user;
     };
 
     users.users.${user} = {

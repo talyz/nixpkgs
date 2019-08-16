@@ -96,14 +96,69 @@ in
         '';
       };
 
-      ensureDatabases = mkOption {
-        type = types.listOf types.str;
+      createDatabases = mkOption {
+        type = with types; loaOf (submodule (
+        { name, ... }:
+        {
+          options = {
+            name = mkOption {
+              type = types.str;
+              default = name;
+              description = ''
+                The name of the database to create.
+              '';
+              example = "gitlab";
+            };
+            owner = mkOption {
+              type = with types; nullOr str;
+              default = null;
+              description = ''
+                The name of the database owner.
+
+                The user will be created if it doesn't already
+                exist. The owner of an existing database will be
+                changed if it's changed here, and all objects in the
+                database owned by the previous owner will be
+                reassigned to the new one.
+
+                See
+                <link xlink:href="https://www.postgresql.org/docs/current/manage-ag-createdb.html">Creating a Database</link>,
+                <link xlink:href="https://www.postgresql.org/docs/current/sql-reassign-owned.html">REASSIGN OWNED</link>
+                and
+                <link xlink:href="https://www.postgresql.org/docs/current/sql-alterdatabase.html">ALTER DATABASE</link>
+                for more details.
+              '';
+            };
+            extensions = mkOption {
+              type = with types; listOf str;
+              default = [];
+              description = ''
+                Extensions to add to the database.
+
+                Extensions will be added to existing databases, but
+                not removed if they're removed from the list.
+
+                See
+                <link xlink:href="https://www.postgresql.org/docs/current/sql-createextension.html">
+                CREATE EXTENSION</link> for more details.
+              '';
+              example = [ "pg_trgm" "hstore" ];
+            };
+          };
+        }));
         default = [];
         description = ''
-          Ensures that the specified databases exist.
-          This option will never delete existing databases, especially not when the value of this
-          option is changed. This means that databases created once through this option or
-          otherwise have to be removed manually.
+          Create the specified databases with their respective owner
+          and extensions. A database that already exists will not be
+          created again and the owner will not be changed. Extensions
+          will be added to existing databases, but not removed if
+          they're removed from the list.
+
+          This option will never delete existing databases; if the
+          name of a database is changed here, a new database with that
+          name will be created and the old one will remain. Databases
+          created once through this option or otherwise have to be
+          removed manually.
         '';
         example = [
           "gitea"
@@ -333,18 +388,35 @@ in
               ''}
               rm -f "${cfg.dataDir}/.first_startup"
             fi
-          '' + optionalString (cfg.ensureDatabases != []) ''
-            ${concatMapStrings (database: ''
-              $PSQL -tAc "SELECT 1 FROM pg_database WHERE datname = '${database}'" | grep -q 1 || $PSQL -tAc 'CREATE DATABASE "${database}"'
-            '') cfg.ensureDatabases}
-          '' + ''
-            ${concatMapStrings (user: ''
-              $PSQL -tAc "SELECT 1 FROM pg_roles WHERE rolname='${user.name}'" | grep -q 1 || $PSQL -tAc "CREATE USER ${user.name}"
+          ''
+          + concatMapStrings (user: ''
+              $PSQL -tAc "SELECT 1 FROM pg_roles WHERE rolname='${user}'" | grep -q 1 || $PSQL -tAc "CREATE USER ${user}"
+            '') (unique (concatMap (a: if a ? owner then if a.owner != null then [a.owner] else [] else [a.name]) (cfg.ensureUsers ++ (attrValues cfg.createDatabases))))
+          + concatMapStrings (database: ''
+              $PSQL -tAc "SELECT 1 FROM pg_database WHERE datname = '${database.name}'" | grep -q 1 || $PSQL -tAc 'CREATE DATABASE "${database.name}" ${optionalString (database.owner != null) ''OWNER "${database.owner}"''}'
+              ${optionalString (database.owner != null) ''
+                  current_owner=$($PSQL -tAc "SELECT pg_catalog.pg_get_userbyid(datdba) FROM pg_catalog.pg_database WHERE datname = '${database.name}'")
+                  if [[ "$current_owner" != "${database.owner}" ]]; then
+                      $PSQL -tAc 'ALTER DATABASE "${database.name}" OWNER TO "${database.owner}"'
+                      if [[ -e "${cfg.dataDir}/.reassigning_${database.name}" ]]; then
+                          echo "Reassigning ownership of ${database.name} to ${database.owner} failed on last boot. Failing..."
+                          exit 1
+                      fi
+                      touch "${cfg.dataDir}/.reassigning_${database.name}"
+                      $PSQL "${database.name}" -tAc "REASSIGN OWNED BY \"$current_owner\" TO \"${database.owner}\""
+                      rm "${cfg.dataDir}/.reassigning_${database.name}"
+                  fi
+                ''}
+            ''
+            + concatMapStrings (extension: ''
+                $PSQL '${database.name}' -tAc "CREATE EXTENSION IF NOT EXISTS ${extension}"
+              '') database.extensions
+            ) (attrValues cfg.createDatabases)
+          + concatMapStrings (user: ''
               ${concatStringsSep "\n" (mapAttrsToList (database: permission: ''
                 $PSQL -tAc 'GRANT ${permission} ON ${database} TO ${user.name}'
               '') user.ensurePermissions)}
-            '') cfg.ensureUsers}
-          '';
+            '') cfg.ensureUsers;
 
         unitConfig.RequiresMountsFor = "${cfg.dataDir}";
       };

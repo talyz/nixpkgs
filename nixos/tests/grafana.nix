@@ -24,11 +24,7 @@ let
       };
       services.postgresql = {
         enable = true;
-        ensureDatabases = [ "grafana" ];
-        ensureUsers = [{
-          name = "grafana";
-          ensurePermissions."DATABASE grafana" = "ALL PRIVILEGES";
-        }];
+        createDatabases.grafana.owner = "grafana";
       };
       systemd.services.grafana.after = [ "postgresql.service" ];
     };
