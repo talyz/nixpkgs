@@ -602,11 +602,10 @@ in {
     # We use postgres as the main data store.
     services.postgresql = optionalAttrs databaseActuallyCreateLocally {
       enable = true;
-      createDatabases = {
-        "${cfg.databaseName}" = {
-          owner = cfg.databaseUsername;
-          extensions = [ "pg_trgm" ];
-        };
+      ensureDatabases = singleton {
+        name = cfg.databaseName;
+        owner = cfg.databaseUsername;
+        extensions = [ "pg_trgm" ];
       };
     };
 

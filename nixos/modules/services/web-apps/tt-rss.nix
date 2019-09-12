@@ -657,7 +657,12 @@ let
 
     services.postgresql = mkIf pgsqlLocal {
       enable = mkDefault true;
-      createDatabases.${cfg.database.name}.owner = cfg.user;
+      ensureDatabases = [ cfg.database.name ];
+      ensureUsers = [
+        { name = cfg.user;
+          ensurePermissions = { "DATABASE ${cfg.database.name}" = "ALL PRIVILEGES"; };
+        }
+      ];
     };
 
     users.users.tt_rss = optionalAttrs (cfg.user == "tt_rss") {

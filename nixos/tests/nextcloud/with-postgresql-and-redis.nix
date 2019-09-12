@@ -48,7 +48,12 @@ in {
 
       services.postgresql = {
         enable = true;
-        createDatabases.nextcloud.owner = "nextcloud";
+        ensureDatabases = [ "nextcloud" ];
+        ensureUsers = [
+          { name = "nextcloud";
+            ensurePermissions."DATABASE nextcloud" = "ALL PRIVILEGES";
+          }
+        ];
       };
     };
   };

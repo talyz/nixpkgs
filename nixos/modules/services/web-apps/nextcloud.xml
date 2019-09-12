@@ -42,7 +42,12 @@
 
   services.postgresql = {
     <link linkend="opt-services.postgresql.enable">enable</link> = true;
-    <link linkend="opt-services.postgresql.createDatabases">createDatabases</link>.nextcloud.owner = "nextcloud";
+    <link linkend="opt-services.postgresql.ensureDatabases">ensureDatabases</link> = [ "nextcloud" ];
+    <link linkend="opt-services.postgresql.ensureUsers">ensureUsers</link> = [
+     { name = "nextcloud";
+       ensurePermissions."DATABASE nextcloud" = "ALL PRIVILEGES";
+     }
+    ];
   };
 
   # ensure that postgres is running *before* running the setup

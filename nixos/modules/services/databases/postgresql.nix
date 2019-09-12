@@ -96,8 +96,8 @@ in
         '';
       };
 
-      createDatabases = mkOption {
-        type = with types; loaOf (submodule (
+      ensureDatabases = mkOption {
+        type = with types; listOf (either str (submodule (
         { name, ... }:
         {
           options = {
@@ -105,7 +105,7 @@ in
               type = types.str;
               default = name;
               description = ''
-                The name of the database to create.
+                The name of the database to ensure.
               '';
               example = "gitlab";
             };
@@ -145,20 +145,20 @@ in
               example = [ "pg_trgm" "hstore" ];
             };
           };
-        }));
+        })));
         default = [];
         description = ''
-          Create the specified databases with their respective owner
-          and extensions. A database that already exists will not be
-          created again and the owner will not be changed. Extensions
-          will be added to existing databases, but not removed if
-          they're removed from the list.
+          Ensure the existence of the listed databases with their
+          respective owner and extensions.
 
           This option will never delete existing databases; if the
           name of a database is changed here, a new database with that
           name will be created and the old one will remain. Databases
           created once through this option or otherwise have to be
           removed manually.
+
+          Extensions will be added to existing databases, but not
+          removed if they're removed from the list.
         '';
         example = [
           "gitea"
@@ -391,27 +391,31 @@ in
           ''
           + concatMapStrings (user: ''
               $PSQL -tAc "SELECT 1 FROM pg_roles WHERE rolname='${user}'" | grep -q 1 || $PSQL -tAc "CREATE USER ${user}"
-            '') (unique (concatMap (a: if a ? owner then if a.owner != null then [a.owner] else [] else [a.name]) (cfg.ensureUsers ++ (attrValues cfg.createDatabases))))
-          + concatMapStrings (database: ''
-              $PSQL -tAc "SELECT 1 FROM pg_database WHERE datname = '${database.name}'" | grep -q 1 || $PSQL -tAc 'CREATE DATABASE "${database.name}" ${optionalString (database.owner != null) ''OWNER "${database.owner}"''}'
-              ${optionalString (database.owner != null) ''
-                  current_owner=$($PSQL -tAc "SELECT pg_catalog.pg_get_userbyid(datdba) FROM pg_catalog.pg_database WHERE datname = '${database.name}'")
-                  if [[ "$current_owner" != "${database.owner}" ]]; then
-                      $PSQL -tAc 'ALTER DATABASE "${database.name}" OWNER TO "${database.owner}"'
-                      if [[ -e "${cfg.dataDir}/.reassigning_${database.name}" ]]; then
-                          echo "Reassigning ownership of ${database.name} to ${database.owner} failed on last boot. Failing..."
-                          exit 1
-                      fi
-                      touch "${cfg.dataDir}/.reassigning_${database.name}"
-                      $PSQL "${database.name}" -tAc "REASSIGN OWNED BY \"$current_owner\" TO \"${database.owner}\""
-                      rm "${cfg.dataDir}/.reassigning_${database.name}"
-                  fi
-                ''}
-            ''
-            + concatMapStrings (extension: ''
-                $PSQL '${database.name}' -tAc "CREATE EXTENSION IF NOT EXISTS ${extension}"
-              '') database.extensions
-            ) (attrValues cfg.createDatabases)
+            '') (unique (concatMap (a: if a ? owner then if a.owner != null then [a.owner] else [] else [a.name]) (cfg.ensureUsers ++ cfg.ensureDatabases)))
+          + concatMapStrings (db:
+            let
+              database = if isString db then { name = db; owner = null; extensions = []; } else db;
+            in
+              ''
+                $PSQL -tAc "SELECT 1 FROM pg_database WHERE datname = '${database.name}'" | grep -q 1 || $PSQL -tAc 'CREATE DATABASE "${database.name}" ${optionalString (database.owner != null) ''OWNER "${database.owner}"''}'
+                ${optionalString (database.owner != null) ''
+                    current_owner=$($PSQL -tAc "SELECT pg_catalog.pg_get_userbyid(datdba) FROM pg_catalog.pg_database WHERE datname = '${database.name}'")
+                    if [[ "$current_owner" != "${database.owner}" ]]; then
+                        $PSQL -tAc 'ALTER DATABASE "${database.name}" OWNER TO "${database.owner}"'
+                        if [[ -e "${cfg.dataDir}/.reassigning_${database.name}" ]]; then
+                            echo "Reassigning ownership of ${database.name} to ${database.owner} failed on last boot. Failing..."
+                            exit 1
+                        fi
+                        touch "${cfg.dataDir}/.reassigning_${database.name}"
+                        $PSQL "${database.name}" -tAc "REASSIGN OWNED BY \"$current_owner\" TO \"${database.owner}\""
+                        rm "${cfg.dataDir}/.reassigning_${database.name}"
+                    fi
+                  ''}
+              ''
+              + concatMapStrings (extension: ''
+                  $PSQL '${database.name}' -tAc "CREATE EXTENSION IF NOT EXISTS ${extension}"
+                '') database.extensions
+              ) cfg.ensureDatabases
           + concatMapStrings (user: ''
               ${concatStringsSep "\n" (mapAttrsToList (database: permission: ''
                 $PSQL -tAc 'GRANT ${permission} ON ${database} TO ${user.name}'

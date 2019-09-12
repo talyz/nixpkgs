@@ -265,7 +265,12 @@ in
 
     services.postgresql = mkIf pgsqlLocal {
       enable = true;
-      createDatabases.${cfg.database.name}.owner = cfg.database.name;
+      ensureDatabases = [ cfg.database.name ];
+      ensureUsers = [
+        { name = cfg.database.user;
+          ensurePermissions = { "DATABASE ${cfg.database.name}" = "ALL PRIVILEGES"; };
+        }
+      ];
     };
 
     # create symlinks for the basic directory layout the redmine package expects
