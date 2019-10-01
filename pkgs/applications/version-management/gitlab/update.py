@@ -227,7 +227,7 @@ def update_gitlab_shell():
 
 @cli.command('update-gitlab-workhorse')
 def update_gitlab_workhorse():
-    """Update gitlab-shell"""
+    """Update gitlab-workhorse"""
     data = _get_data_json()
     gitlab_workhorse_version = data['ce']['passthru']['GITLAB_WORKHORSE_VERSION']
     _call_update_source_version('gitlab-workhorse', gitlab_workhorse_version)
