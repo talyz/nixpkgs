@@ -3,6 +3,7 @@
 , libzip, zlib, pcre, pcre2, libxslt, aspell, openldap, cyrus_sasl, uwimap
 , pam, libiconv, enchant1, libXpm, gd, libwebp, libjpeg, libpng, freetype
 , libffi, freetds, postgresql, sqlite, net-snmp, unixODBC, libedit, readline
+, rsync
 }:
 
 let
@@ -740,13 +741,20 @@ let
         phpize
         ${postPhpize}
         ${lib.concatMapStringsSep "\n"
-          (dep: "mkdir -p ext; ln -s ../../${dep} ext/")
+          (dep: "mkdir -p ext; ln -s ${dep.dev}/include ext/${dep.name}")
           internalDeps}
       '';
       checkPhase = "echo n | make test";
+      outputs = [ "out" "dev" ];
       installPhase = ''
         mkdir -p $out/lib/php/extensions
         cp modules/${name}.so $out/lib/php/extensions/${name}.so
+        mkdir -p $dev/include
+        ${rsync}/bin/rsync -r --filter="+ */" \
+                              --filter="+ *.h" \
+                              --filter="- *" \
+                              --prune-empty-dirs \
+                              . $dev/include/
       '';
     });
 
@@ -838,7 +846,7 @@ let
         doCheck = false; }
       { name = "mbstring"; buildInputs = [ oniguruma ]; doCheck = false; }
       { name = "mysqli";
-        internalDeps = [ "mysqlnd" ];
+        internalDeps = [ php.phpPackages.exts.mysqlnd ];
         configureFlags = [ "--with-mysqli=mysqlnd" "--with-mysql-sock=/run/mysqld/mysqld.sock" ];
         doCheck = false; }
       { name = "mysqlnd";
@@ -899,27 +907,27 @@ let
       { name = "pcntl"; }
       { name = "pdo"; doCheck = false; }
       { name = "pdo_dblib";
-        internalDeps = [ "pdo" ];
+        internalDeps = [ php.phpPackages.exts.pdo ];
         configureFlags = [ "--with-pdo-dblib=${freetds}" ];
         # Doesn't seem to work on darwin.
         enable = (!stdenv.isDarwin);
         doCheck = false; }
       # pdo_firebird (7.4, 7.3, 7.2)
       { name = "pdo_mysql";
-        internalDeps = [ "mysqlnd" "pdo" ];
+        internalDeps = with php.phpPackages.exts; [ pdo mysqlnd ];
         configureFlags = [ "--with-pdo-mysql=mysqlnd" ];
         doCheck = false; }
       # pdo_oci (7.4, 7.3, 7.2)
       { name = "pdo_odbc";
-        internalDeps = [ "pdo" ];
+        internalDeps = [ php.phpPackages.exts.pdo ];
         configureFlags = [ "--with-pdo-odbc=unixODBC,${unixODBC}" ];
         doCheck = false; }
       { name = "pdo_pgsql";
-        internalDeps = [ "pdo" ];
+        internalDeps = [ php.phpPackages.exts.pdo ];
         configureFlags = [ "--with-pdo-pgsql=${postgresql}" ];
         doCheck = false; }
       { name = "pdo_sqlite";
-        internalDeps = [ "pdo" ];
+        internalDeps = [ php.phpPackages.exts.pdo ];
         buildInputs = [ sqlite ];
         configureFlags = [ "--with-pdo-sqlite=${sqlite.dev}" ];
         doCheck = false; }
