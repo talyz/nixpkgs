@@ -9,7 +9,7 @@
 let
   self = with self; {
     buildPecl = import ../build-support/build-pecl.nix {
-      inherit php;
+      inherit php lib;
       inherit (pkgs) stdenv autoreconfHook fetchurl re2c;
     };
 
