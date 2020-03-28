@@ -1,7 +1,8 @@
-{ stdenv, php, autoreconfHook, fetchurl, re2c }:
+{ stdenv, lib, php, autoreconfHook, fetchurl, re2c }:
 
 { pname
 , version
+, internalDeps ? []
 , buildInputs ? []
 , nativeBuildInputs ? []
 , makeFlags ? []
@@ -22,5 +23,10 @@ stdenv.mkDerivation (args // {
 
   makeFlags = [ "EXTENSION_DIR=$(out)/lib/php/extensions" ] ++ makeFlags;
 
-  autoreconfPhase = "phpize";
+  autoreconfPhase = ''
+    phpize
+    ${lib.concatMapStringsSep "\n"
+      (dep: "mkdir -p ext; ln -s ${dep.dev}/include ext/${dep.name}")
+      internalDeps}
+  '';
 })
