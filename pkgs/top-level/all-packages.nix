@@ -9373,17 +9373,11 @@ in
   php = php74;
   phpPackages = php74Packages;
 
-  php72Packages = recurseIntoAttrs (callPackage ./php-packages.nix {
-    php = php72base;
-  });
+  php72Packages = recurseIntoAttrs php72.phpPackages;
 
-  php73Packages = recurseIntoAttrs (callPackage ./php-packages.nix {
-    php = php73base;
-  });
+  php73Packages = recurseIntoAttrs php73.phpPackages;
 
-  php74Packages = recurseIntoAttrs (callPackage ./php-packages.nix {
-    php = php74base;
-  });
+  php74Packages = recurseIntoAttrs php74.phpPackages;
 
   inherit (callPackages ../development/interpreters/php {
     stdenv = if stdenv.cc.isClang then llvmPackages_6.stdenv else stdenv;
