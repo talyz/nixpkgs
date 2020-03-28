@@ -144,13 +144,14 @@ let
     };
   };
 
-  generic' = { version, sha256, ... }@args:
+  generic' = { version, sha256, self, ... }@args:
     let
-      php = generic args;
+      php = generic (builtins.removeAttrs args [ "self" ]);
+      phpPackages = callPackage ../../../top-level/php-packages.nix { php = self; };
       buildEnv = { exts ? (_: []), extraConfig ? "" }:
         let
           getExtName = ext: lib.removePrefix "php-" (builtins.parseDrvName ext.name).name;
-          extList = exts (callPackage ../../../top-level/php-packages.nix { inherit php; });
+          extList = exts phpPackages;
 
           # Generate extension load configuration snippets from
           # exts. This is an attrset suitable for use with
@@ -181,7 +182,9 @@ let
           symlinkJoin {
             name = "php-with-extensions-${version}";
             nativeBuildInputs = [ makeWrapper ];
-            passthru.buildEnv = buildEnv;
+            passthru = {
+              inherit buildEnv phpPackages;
+            };
             paths = [ php ];
             postBuild = ''
               wrapProgram $out/bin/php \
@@ -192,12 +195,15 @@ let
           };
     in
       php.overrideAttrs (_: {
-        passthru.buildEnv = buildEnv;
+        passthru = {
+          inherit buildEnv phpPackages;
+        };
       });
 
   php72base = generic' {
     version = "7.2.28";
     sha256 = "18sjvl67z5a2x5s2a36g6ls1r3m4hbrsw52hqr2qsgfvg5dkm5bw";
+    self = php72base;
 
     # https://bugs.php.net/bug.php?id=76826
     extraPatches = lib.optional stdenv.isDarwin ./php72-darwin-isfinite.patch;
@@ -206,6 +212,7 @@ let
   php73base = generic' {
     version = "7.3.15";
     sha256 = "0g84hws15s8gh8iq4h6q747dyfazx47vh3da3whz8d80x83ibgld";
+    self = php73base;
 
     # https://bugs.php.net/bug.php?id=76826
     extraPatches = lib.optional stdenv.isDarwin ./php73-darwin-isfinite.patch;
@@ -214,6 +221,7 @@ let
   php74base = generic' {
     version = "7.4.3";
     sha256 = "wVF7pJV4+y3MZMc6Ptx21PxQfEp6xjmYFYTMfTtMbRQ=";
+    self = php74base;
   };
 
   defaultPhpExtensions = {
