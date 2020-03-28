@@ -843,22 +843,24 @@ let
         doCheck = false; }
       { name = "mysqlnd";
         buildInputs = [ zlib openssl ];
+        # The configure script doesn't correctly add library link
+        # flags, so we add them to the variable used by the Makefile
+        # when linking.
+        MYSQLND_SHARED_LIBADD = "-lssl -lcrypto -lz";
         # The configure script builds a config.h which is never
-        # included. Let's include it in the main file, php_mysqlnd.c.
+        # included. Let's include it in the main header file
+        # included by all .c-files.
         patches = [
           (pkgs.writeText "mysqlnd_config.patch" ''
-            --- a/php_mysqlnd.c
-            +++ b/php_mysqlnd.c
-            @@ -17,6 +17,9 @@
-               +----------------------------------------------------------------------+
-             */
-
+            --- a/mysqlnd.h
+            +++ b/mysqlnd.h
+            @@ -1,3 +1,6 @@
             +#ifdef HAVE_CONFIG_H
             +#include "config.h"
             +#endif
-             #include "php.h"
-             #include "mysqlnd.h"
-             #include "mysqlnd_priv.h"
+             /*
+               +----------------------------------------------------------------------+
+               | Copyright (c) The PHP Group                                          |
           '')
         ];
         postPhpize = lib.optionalString (lib.versionOlder php.version "7.4") ''
