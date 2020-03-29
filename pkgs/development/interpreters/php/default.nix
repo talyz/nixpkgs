@@ -228,9 +228,10 @@ let
 
   defaultPhpExtensions = {
     exts = pp: with pp.exts; ([
-      bcmath calendar curl exif ftp gd gettext gmp intl json ldap mysqli
-      mysqlnd opcache openssl pcntl pdo pdo_mysql pdo_odbc pdo_pgsql
-      pgsql readline soap sodium sqlite3 zip zlib
+      bcmath calendar curl exif ftp gd gettext gmp intl json ldap
+      mysqli mysqlnd opcache openssl pcntl pdo pdo_mysql pdo_odbc
+      pdo_pgsql pgsql posix readline session soap sodium sqlite3 zip
+      zlib
     ] ++ lib.optionals (!stdenv.isDarwin) [ imap ]);
   };
 in {
