@@ -752,6 +752,14 @@ self: super:
      once during the time when the timer was inactive.
     </para>
    </listitem>
+   <listitem>
+    <para>
+     The GitLab module now has support for automatic backups. A
+     schedule can be set with the
+     <link linkend="opt-services.gitlab.backup.startAt">services.gitlab.backup.startAt</link>
+     option.
+    </para>
+   </listitem>
   </itemizedlist>
  </section>
 </section>
