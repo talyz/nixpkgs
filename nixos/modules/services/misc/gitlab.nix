@@ -264,7 +264,7 @@ in {
         type = types.str;
         default = "/var/gitlab/state";
         description = ''
-          Gitlab state directory. Configuration, repositories and
+          GitLab state directory. Configuration, repositories and
           logs, among other things, are stored here.
 
           The directory will be created automatically if it doesn't
@@ -375,7 +375,7 @@ in {
         type = types.str;
         default = "";
         description = ''
-          Gitlab database hostname. An empty string means <quote>use
+          GitLab database hostname. An empty string means <quote>use
           local unix socket connection</quote>.
         '';
       };
@@ -384,7 +384,7 @@ in {
         type = with types; nullOr path;
         default = null;
         description = ''
-          File containing the Gitlab database user password.
+          File containing the GitLab database user password.
 
           This should be a string, not a nix path, since nix paths are
           copied into the world-readable nix store.
@@ -405,13 +405,13 @@ in {
       databaseName = mkOption {
         type = types.str;
         default = "gitlab";
-        description = "Gitlab database name.";
+        description = "GitLab database name.";
       };
 
       databaseUsername = mkOption {
         type = types.str;
         default = "gitlab";
-        description = "Gitlab database user.";
+        description = "GitLab database user.";
       };
 
       databasePool = mkOption {
@@ -455,14 +455,14 @@ in {
       host = mkOption {
         type = types.str;
         default = config.networking.hostName;
-        description = "Gitlab host name. Used e.g. for copy-paste URLs.";
+        description = "GitLab host name. Used e.g. for copy-paste URLs.";
       };
 
       port = mkOption {
         type = types.int;
         default = 8080;
         description = ''
-          Gitlab server port for copy-paste URLs, e.g. 80 or 443 if you're
+          GitLab server port for copy-paste URLs, e.g. 80 or 443 if you're
           service over https.
         '';
       };
@@ -515,26 +515,26 @@ in {
         address = mkOption {
           type = types.str;
           default = "localhost";
-          description = "Address of the SMTP server for Gitlab.";
+          description = "Address of the SMTP server for GitLab.";
         };
 
         port = mkOption {
           type = types.int;
           default = 25;
-          description = "Port of the SMTP server for Gitlab.";
+          description = "Port of the SMTP server for GitLab.";
         };
 
         username = mkOption {
           type = with types; nullOr str;
           default = null;
-          description = "Username of the SMTP server for Gitlab.";
+          description = "Username of the SMTP server for GitLab.";
         };
 
         passwordFile = mkOption {
           type = types.nullOr types.path;
           default = null;
           description = ''
-            File containing the password of the SMTP server for Gitlab.
+            File containing the password of the SMTP server for GitLab.
 
             This should be a string, not a nix path, since nix paths
             are copied into the world-readable nix store.
