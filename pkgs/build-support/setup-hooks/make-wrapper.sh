@@ -70,31 +70,31 @@ makeWrapper() {
             n=$((n + 3))
             if test -n "$value"; then
                 if [[ "$p" == *'-dedup' ]]; then
-                    {
-                        # This abomination removes all occurences of the value that is to be prepended/appended.
-                        # We add (or re-add) the value later. This ensures it's always the last or first value.
-                        # As an example, adding /bin to a colon-separated environment variable would remove:
-                        # - /bin:*
-                        # - *:/bin:*
-                        # - *:/bin
-                        echo "OLDIFS=\$IFS"
-                        echo "value=${value@Q}"
-                        echo "IFS=${separator@Q}"
-                        echo "for v in \$value; do"
-                        echo "  tmp="
-                        echo "  for e in \$$varName; do"
-                        echo "    if [[ \$e != \"\$v\" ]]; then"
-                        echo "      if [[ -z \$tmp ]]; then"
-                        echo "        tmp=\$e"
-                        echo "      else"
-                        echo "        tmp=\$tmp${separator@Q}\$e"
-                        echo "      fi"
-                        echo "    fi"
-                        echo "    export $varName=\$tmp"
-                        echo "  done"
-                        echo "done"
-                        echo "IFS=\$OLDIFS"
-                    } >> "$wrapper"
+                    # This abomination removes all occurences of the value that is to be prepended/appended.
+                    # We add (or re-add) the value later. This ensures it's always the last or first value.
+                    # As an example, adding /bin to a colon-separated environment variable would remove:
+                    # - /bin:*
+                    # - *:/bin:*
+                    # - *:/bin
+                    cat >> "$wrapper" <<EOF
+OLDIFS=\$IFS
+value=${value@Q}
+IFS=${separator@Q}
+for v in \$value; do
+  tmp=
+  for e in \$$varName; do
+    if [[ \$e != "\$v" ]]; then
+      if [[ -z \$tmp ]]; then
+        tmp=\$e
+      else
+        tmp=\$tmp${separator@Q}\$e
+      fi
+    fi
+    export $varName=\$tmp
+  done
+done
+IFS=\$OLDIFS
+EOF
                 fi
 
                 if [[ "$p" == '--suffix'* ]]; then
