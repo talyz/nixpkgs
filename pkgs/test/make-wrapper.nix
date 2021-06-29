@@ -97,7 +97,7 @@ runCommand "make-wrapper-test"
     + mkTest "VAR=abc test-prefix" "VAR=abc"
     # Moves value to the front if it already existed
     + mkTest "VAR=foo:abc test-prefix" "VAR=abc:foo"
-    + mkTest "VAR=abc:foo:bar test-prefix-multi" "VAR=foo:abc:bar"
+    + mkTest "VAR=abc:foo:bar test-prefix-multi" "VAR=abc:foo:bar"
     # Doesn't overwrite parts of the string
     + mkTest "VAR=test:abcde:test test-prefix" "VAR=abc:test:abcde:test"
     # Only append the value once when given multiple times in a parameter
