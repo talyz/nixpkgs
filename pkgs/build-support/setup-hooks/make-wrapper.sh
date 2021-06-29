@@ -38,19 +38,34 @@ makeWrapper() {
     assertExecutable "$original"
 
     dedupAdd() {
-        mode="$1"
-        varName="$2"
-        separator="$3"
-        value="$4"
+        local mode="$1"
+        local varName="$2"
+        local separator="$3"
+        local value="$4"
         if test -n "$value"; then
-            # This abomination removes all occurences of the value that is to be prepended/appended.
-            # We add (or re-add) the value later. This ensures it's always the last or first value.
-            # As an example, adding /bin to a colon-separated environment variable would remove:
-            # - /bin:*
-            # - *:/bin:*
-            # - *:/bin
-            OLDIFS=$IFS
+            # Remove all occurences of the value that is to be
+            # prepended/appended before adding it. This ensures it's
+            # always the last or first value. As an example, prefixing
+            # /bin to a colon-separated environment variable
+            # containing
+            #
+            # /usr/bin:/bin:/bin/:/home:/bin
+            #
+            # would result in
+            #
+            # /bin:/usr/bin:/bin/:/home
+            local old_ifs=$IFS
             IFS=$separator
+            if [[ "$mode" == "prefix" ]]; then
+                # Keep the order of the components as written when
+                # prefixing; normally, they would be added in the
+                # reverse order.
+                local tmp=
+                for v in $value; do
+                    tmp=$v${tmp:+$separator}$tmp
+                done
+                value="$tmp"
+            fi
             for v in $value; do
                 {
                     echo "OLDIFS=\$IFS"
@@ -72,7 +87,7 @@ makeWrapper() {
                     echo "IFS=\$OLDIFS"
                 } >> "$wrapper"
             done
-            IFS=$OLDIFS
+            IFS=$old_ifs
         fi
     }
 
