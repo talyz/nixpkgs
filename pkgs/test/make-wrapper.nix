@@ -57,12 +57,9 @@ runCommand "make-wrapper-test"
       (mkWrapperBinary { name = "test-run-and-set"; args = [ "--run" "export VAR=foo" "--set" "VAR" "bar" ]; })
       (mkWrapperBinary { name = "test-args"; args = [ "--add-flags" "abc" ]; wrapped = wrappedBinaryArgs; })
       (mkWrapperBinary { name = "test-prefix"; args = [ "--prefix" "VAR" ":" "abc" ]; })
-      (mkWrapperBinary { name = "test-prefix-spaces"; args = [ "--prefix" "VAR" " : " "abc" ]; })
       (mkWrapperBinary { name = "test-suffix"; args = [ "--suffix" "VAR" ":" "abc" ]; })
-      (mkWrapperBinary { name = "test-suffix-spaces"; args = [ "--suffix" "VAR" " : " "abc" ]; })
       (mkWrapperBinary { name = "test-prefix-and-suffix"; args = [ "--prefix" "VAR" ":" "foo" "--suffix" "VAR" ":" "bar" ]; })
-      (mkWrapperBinary { name = "test-prefix-dedup"; args = [ "--prefix-dedup" "VAR" ":" "abc" ]; })
-      (mkWrapperBinary { name = "test-prefix-dedup-multi"; args = [ "--prefix-dedup" "VAR" ":" "abc:abc" ]; })
+      (mkWrapperBinary { name = "test-prefix-multi"; args = [ "--prefix" "VAR" ":" "abc:foo:foo" ]; })
       (mkWrapperBinary { name = "test-suffix-each"; args = [ "--suffix-each" "VAR" ":" "foo bar" ]; })
       (mkWrapperBinary { name = "test-suffix-contents"; args = [ "--suffix-contents" "VAR" ":" "${foofile} ${barfile}" ]; })
       (mkWrapperBinary { name = "test-prefix-contents"; args = [ "--prefix-contents" "VAR" ":" "${foofile} ${barfile}" ]; })
@@ -96,40 +93,27 @@ runCommand "make-wrapper-test"
     + mkTest "VAR=foo test-prefix" "VAR=abc:foo"
     # sets variable if not set yet
     + mkTest "test-prefix" "VAR=abc"
-    # adds the same variable multiple times
-    + mkTest "VAR=abc test-prefix" "VAR=abc:abc"
-    # test edge case with spaces in the separator
-    + mkTest "VAR=foo test-prefix-spaces" "VAR=abc : foo"
-    + mkTest "test-prefix-spaces" "VAR=abc"
-    + mkTest "VAR=abc test-prefix-spaces" "VAR=abc : abc"
+    # prepends value only once
+    + mkTest "VAR=abc test-prefix" "VAR=abc"
+    # Moves value to the front if it already existed
+    + mkTest "VAR=foo:abc test-prefix" "VAR=abc:foo"
+    + mkTest "VAR=abc:foo:bar test-prefix-multi" "VAR=foo:abc:bar"
+    # Doesn't overwrite parts of the string
+    + mkTest "VAR=test:abcde:test test-prefix" "VAR=abc:test:abcde:test"
+    # Only append the value once when given multiple times in a parameter
+    # to makeWrapper
+    + mkTest "test-prefix" "VAR=abc"
+
 
     # --suffix works
     + mkTest "VAR=foo test-suffix" "VAR=foo:abc"
     # sets variable if not set yet
     + mkTest "test-suffix" "VAR=abc"
-    # adds the same variable multiple times
-    + mkTest "VAR=abc test-suffix" "VAR=abc:abc"
-    # test edge case with spaces in the separator
-    + mkTest "VAR=foo test-suffix-spaces" "VAR=foo : abc"
-    + mkTest "test-suffix-spaces" "VAR=abc"
-    + mkTest "VAR=abc test-suffix-spaces" "VAR=abc : abc"
+    # adds the same value only once
+    + mkTest "VAR=abc test-suffix" "VAR=abc"
+    + mkTest "VAR=abc:foo test-suffix" "VAR=foo:abc"
     # --prefix in combination with --suffix
     + mkTest "VAR=abc test-prefix-and-suffix" "VAR=foo:abc:bar"
-
-    # --prefix-dedup works
-    + mkTest "test-prefix-dedup" "VAR=abc"
-    # Prepends value as expected
-    + mkTest "VAR=foo test-prefix-dedup" "VAR=abc:foo"
-    # Prepends value only once
-    + mkTest "VAR=abc test-prefix-dedup" "VAR=abc"
-    + mkTest "VAR=abc:foo test-prefix-dedup" "VAR=abc:foo"
-    # Moves value to the front if it already existed
-    + mkTest "VAR=foo:abc test-prefix-dedup" "VAR=abc:foo"
-    # Doesn"t overwrite parts of the string
-    + mkTest "VAR=test:abcde:test test-prefix-dedup" "VAR=abc:test:abcde:test"
-    # Only append the value once when given multiple times in a parameter
-    # to makeWrapper
-    + mkTest "test-prefix-dedup" "VAR=abc"
 
     # --suffix-each works
     + mkTest "VAR=abc test-suffix-each" "VAR=abc:foo:bar"
