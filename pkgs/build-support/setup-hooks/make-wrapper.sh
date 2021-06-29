@@ -37,6 +37,45 @@ makeWrapper() {
 
     assertExecutable "$original"
 
+    function dedupAdd() {
+        mode="$1"
+        varName="$2"
+        separator="$3"
+        value="$4"
+        if test -n "$value"; then
+            # This abomination removes all occurences of the value that is to be prepended/appended.
+            # We add (or re-add) the value later. This ensures it's always the last or first value.
+            # As an example, adding /bin to a colon-separated environment variable would remove:
+            # - /bin:*
+            # - *:/bin:*
+            # - *:/bin
+            OLDIFS=$IFS
+            IFS=$separator
+            for v in $value; do
+                {
+                    echo "OLDIFS=\$IFS"
+                    echo "IFS=${separator@Q}"
+                    echo "tmp="
+                    echo "for e in \$$varName; do"
+                    echo "    if [[ \$e != \"$v\" ]]; then"
+                    echo "        tmp=\$tmp\${tmp:+${separator@Q}}\$e"
+                    echo "    fi"
+                    echo "done"
+                    if [[ "$mode" == 'suffix' ]]; then
+                        echo "export $varName=\$tmp\${tmp:+${separator@Q}}$v" >> "$wrapper"
+                    elif [[ "$mode" == 'prefix' ]]; then
+                        echo "export $varName=$v\${tmp:+${separator@Q}}\$tmp" >> "$wrapper"
+                    else
+                        echo "unknown mode $mode!" 1>&2
+                        exit 1
+                    fi
+                    echo "IFS=\$OLDIFS"
+                } >> "$wrapper"
+            done
+            IFS=$OLDIFS
+        fi
+    }
+
     mkdir -p "$(dirname "$wrapper")"
 
     echo "#! @shell@ -e" > "$wrapper"
@@ -63,53 +102,25 @@ makeWrapper() {
             command="${params[$((n + 1))]}"
             n=$((n + 1))
             echo "$command" >> "$wrapper"
-        elif [[ ("$p" == "--suffix") || ("$p" == "--prefix") ]]; then
+        elif [[ ("$p" == "--suffix") ]]; then
             varName="${params[$((n + 1))]}"
             separator="${params[$((n + 2))]}"
             value="${params[$((n + 3))]}"
+            dedupAdd "suffix" "$varName" "$separator" "$value"
             n=$((n + 3))
-            if test -n "$value"; then
-                # This abomination removes all occurences of the value that is to be prepended/appended.
-                # We add (or re-add) the value later. This ensures it's always the last or first value.
-                # As an example, adding /bin to a colon-separated environment variable would remove:
-                # - /bin:*
-                # - *:/bin:*
-                # - *:/bin
-                OLDIFS=$IFS
-                IFS=$separator
-                for v in $value; do
-                    cat >> "$wrapper" <<EOF
-OLDIFS=\$IFS
-IFS=${separator@Q}
-tmp=
-for e in \$$varName; do
-  if [[ \$e != "$v" ]]; then
-    if [[ -z \$tmp ]]; then
-      tmp=\$e
-    else
-      tmp=\$tmp${separator@Q}\$e
-    fi
-  fi
-  export $varName=\$tmp
-done
-IFS=\$OLDIFS
-EOF
-                done
-                IFS=$OLDIFS
-            fi
-
-            if [[ "$p" == '--suffix'* ]]; then
-                echo "export $varName=\$$varName\${$varName:+${separator@Q}}${value@Q}" >> "$wrapper"
-            else
-                echo "export $varName=${value@Q}\${$varName:+${separator@Q}}\$$varName" >> "$wrapper"
-            fi
+        elif [[ ("$p" == "--prefix") ]]; then
+            varName="${params[$((n + 1))]}"
+            separator="${params[$((n + 2))]}"
+            value="${params[$((n + 3))]}"
+            dedupAdd "prefix" "$varName" "$separator" "$value"
+            n=$((n + 3))
         elif [[ "$p" == "--suffix-each" ]]; then
             varName="${params[$((n + 1))]}"
             separator="${params[$((n + 2))]}"
             values="${params[$((n + 3))]}"
             n=$((n + 3))
             for value in $values; do
-                echo "export $varName=\$$varName\${$varName:+$separator}${value@Q}" >> "$wrapper"
+                dedupAdd "suffix" "$varName" "$separator" "$value"
             done
         elif [[ ("$p" == "--suffix-contents") || ("$p" == "--prefix-contents") ]]; then
             varName="${params[$((n + 1))]}"
@@ -119,9 +130,9 @@ EOF
             for fileName in $fileNames; do
                 contents="$(cat "$fileName")"
                 if test "$p" = "--suffix-contents"; then
-                    echo "export $varName=\$$varName\${$varName:+$separator}${contents@Q}" >> "$wrapper"
+                    dedupAdd "suffix" "$varName" "$separator" "$contents"
                 else
-                    echo "export $varName=${contents@Q}\${$varName:+$separator}\$$varName" >> "$wrapper"
+                    dedupAdd "prefix" "$varName" "$separator" "$contents"
                 fi
             done
         elif [[ "$p" == "--add-flags" ]]; then
