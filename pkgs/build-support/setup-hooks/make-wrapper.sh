@@ -63,22 +63,21 @@ makeWrapper() {
             command="${params[$((n + 1))]}"
             n=$((n + 1))
             echo "$command" >> "$wrapper"
-        elif [[ ("$p" == "--suffix") || ("$p" == "--prefix") || ("$p" == "--suffix-dedup") || ("$p" == "--prefix-dedup") ]]; then
+        elif [[ ("$p" == "--suffix") || ("$p" == "--prefix") ]]; then
             varName="${params[$((n + 1))]}"
             separator="${params[$((n + 2))]}"
             value="${params[$((n + 3))]}"
             n=$((n + 3))
             if test -n "$value"; then
-                if [[ "$p" == *'-dedup' ]]; then
-                    # This abomination removes all occurences of the value that is to be prepended/appended.
-                    # We add (or re-add) the value later. This ensures it's always the last or first value.
-                    # As an example, adding /bin to a colon-separated environment variable would remove:
-                    # - /bin:*
-                    # - *:/bin:*
-                    # - *:/bin
-                    OLDIFS=$IFS
-                    IFS=$separator
-                    for v in $value; do
+                # This abomination removes all occurences of the value that is to be prepended/appended.
+                # We add (or re-add) the value later. This ensures it's always the last or first value.
+                # As an example, adding /bin to a colon-separated environment variable would remove:
+                # - /bin:*
+                # - *:/bin:*
+                # - *:/bin
+                OLDIFS=$IFS
+                IFS=$separator
+                for v in $value; do
                     cat >> "$wrapper" <<EOF
 OLDIFS=\$IFS
 IFS=${separator@Q}
@@ -95,15 +94,14 @@ for e in \$$varName; do
 done
 IFS=\$OLDIFS
 EOF
-                    done
-                    IFS=$OLDIFS
-                fi
+                done
+                IFS=$OLDIFS
+            fi
 
-                if [[ "$p" == '--suffix'* ]]; then
-                    echo "export $varName=\$$varName\${$varName:+${separator@Q}}${value@Q}" >> "$wrapper"
-                else
-                    echo "export $varName=${value@Q}\${$varName:+${separator@Q}}\$$varName" >> "$wrapper"
-                fi
+            if [[ "$p" == '--suffix'* ]]; then
+                echo "export $varName=\$$varName\${$varName:+${separator@Q}}${value@Q}" >> "$wrapper"
+            else
+                echo "export $varName=${value@Q}\${$varName:+${separator@Q}}\$$varName" >> "$wrapper"
             fi
         elif [[ "$p" == "--suffix-each" ]]; then
             varName="${params[$((n + 1))]}"
