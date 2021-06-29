@@ -37,7 +37,7 @@ makeWrapper() {
 
     assertExecutable "$original"
 
-    function dedupAdd() {
+    dedupAdd() {
         mode="$1"
         varName="$2"
         separator="$3"
