@@ -76,25 +76,27 @@ makeWrapper() {
                     # - /bin:*
                     # - *:/bin:*
                     # - *:/bin
+                    OLDIFS=$IFS
+                    IFS=$separator
+                    for v in $value; do
                     cat >> "$wrapper" <<EOF
 OLDIFS=\$IFS
-value=${value@Q}
 IFS=${separator@Q}
-for v in \$value; do
-  tmp=
-  for e in \$$varName; do
-    if [[ \$e != "\$v" ]]; then
-      if [[ -z \$tmp ]]; then
-        tmp=\$e
-      else
-        tmp=\$tmp${separator@Q}\$e
-      fi
+tmp=
+for e in \$$varName; do
+  if [[ \$e != "$v" ]]; then
+    if [[ -z \$tmp ]]; then
+      tmp=\$e
+    else
+      tmp=\$tmp${separator@Q}\$e
     fi
-    export $varName=\$tmp
-  done
+  fi
+  export $varName=\$tmp
 done
 IFS=\$OLDIFS
 EOF
+                    done
+                    IFS=$OLDIFS
                 fi
 
                 if [[ "$p" == '--suffix'* ]]; then
