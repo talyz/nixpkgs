@@ -68,23 +68,25 @@ makeWrapper() {
             fi
             for v in $value; do
                 {
-                    echo "OLDIFS=\$IFS"
-                    echo "IFS=${separator@Q}"
-                    echo "tmp="
-                    echo "for e in \$$varName; do"
-                    echo "    if [[ \$e != \"$v\" ]]; then"
-                    echo "        tmp=\$tmp\${tmp:+${separator@Q}}\$e"
-                    echo "    fi"
-                    echo "done"
                     if [[ "$mode" == 'suffix' ]]; then
-                        echo "export $varName=\$tmp\${tmp:+${separator@Q}}$v" >> "$wrapper"
+                        echo "if [[ \${$varName:+${separator@Q}\${$varName}${separator@Q}} != *${separator@Q}$v${separator@Q}* ]]; then"
+                        echo "    export $varName=\$$varName\${$varName:+${separator@Q}}$v"
+                        echo "fi"
                     elif [[ "$mode" == 'prefix' ]]; then
-                        echo "export $varName=$v\${tmp:+${separator@Q}}\$tmp" >> "$wrapper"
+                        echo "OLDIFS=\$IFS"
+                        echo "IFS=${separator@Q}"
+                        echo "tmp="
+                        echo "for e in \$$varName; do"
+                        echo "    if [[ \$e != \"$v\" ]]; then"
+                        echo "        tmp=\$tmp\${tmp:+${separator@Q}}\$e"
+                        echo "    fi"
+                        echo "done"
+                        echo "export $varName=$v\${tmp:+${separator@Q}}\$tmp"
+                        echo "IFS=\$OLDIFS"
                     else
                         echo "unknown mode $mode!" 1>&2
                         exit 1
                     fi
-                    echo "IFS=\$OLDIFS"
                 } >> "$wrapper"
             done
             IFS=$old_ifs
