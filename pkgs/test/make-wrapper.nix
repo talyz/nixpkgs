@@ -111,7 +111,7 @@ runCommand "make-wrapper-test"
     + mkTest "test-suffix" "VAR=abc"
     # adds the same value only once
     + mkTest "VAR=abc test-suffix" "VAR=abc"
-    + mkTest "VAR=abc:foo test-suffix" "VAR=foo:abc"
+    + mkTest "VAR=abc:foo test-suffix" "VAR=abc:foo"
     # --prefix in combination with --suffix
     + mkTest "VAR=abc test-prefix-and-suffix" "VAR=foo:abc:bar"
 
