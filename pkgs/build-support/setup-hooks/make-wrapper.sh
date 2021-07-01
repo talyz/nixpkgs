@@ -23,8 +23,6 @@ assertExecutable() {
 
 # --prefix          ENV SEP VAL   : suffix/prefix ENV with VAL, separated by SEP
 # --suffix
-# --prefix-dedup    ENV SEP VAL   : same as --prefix/--suffix, but adding the same value twice skips it
-# --suffix-dedup
 # --suffix-each     ENV SEP VALS  : like --suffix, but VALS is a list
 # --prefix-contents ENV SEP FILES : like --suffix-each, but contents of FILES
 #                                   are read first and used as VALS
@@ -37,23 +35,22 @@ makeWrapper() {
 
     assertExecutable "$original"
 
+    # Write wrapper code which adds `value` to the beginning or end of
+    # the list variable named by `varName`, depending on the `mode`
+    # specified.
+    #
+    # A value which is already part of the list will not be added
+    # again. If this is the case and the `suffix` mode is used, the
+    # list won't be touched at all. The `prefix` mode will however
+    # move the first matching instance of the value to the beginning
+    # of the list. Any remaining duplicates of the value will be left
+    # as-is.
     addValue() {
-        local mode="$1"
-        local varName="$2"
-        local separator="$3"
-        local value="$4"
+        local mode="$1"       # `prefix` or `suffix` to add to the beginning or end respectively
+        local varName="$2"    # name of list variable to add to
+        local separator="$3"  # character used to separate elements of list
+        local value="$4"      # one value, or multiple values separated by `separator`, to add to list
         if test -n "$value"; then
-            # Remove all occurences of the value that is to be
-            # prepended/appended before adding it. This ensures it's
-            # always the last or first value. As an example, prefixing
-            # /bin to a colon-separated environment variable
-            # containing
-            #
-            # /usr/bin:/bin:/bin/:/home:/bin
-            #
-            # would result in
-            #
-            # /bin:/usr/bin:/bin/:/home
             local old_ifs=$IFS
             IFS=$separator
 
@@ -69,17 +66,19 @@ makeWrapper() {
             fi
             for v in $value; do
                 {
-                    if [[ "$mode" == 'suffix' ]]; then
-                        echo "if [[ \${$varName:+${separator@Q}\${$varName}${separator@Q}} != *${separator@Q}${v@Q}${separator@Q}* ]]; then"
-                        echo "    export $varName=\$$varName\${$varName:+${separator@Q}}${v@Q}"
-                        echo "fi"
-                    elif [[ "$mode" == 'prefix' ]]; then
+                    if [[ "$mode" == 'prefix' ]]; then
+                        # Match the value (${v@Q}), optionally surrounded by separators and other values
                         echo "if [[ \$$varName =~ ^((.*)${separator@Q})?${v@Q}(${separator@Q}(.*))?$ ]]; then"
-                        echo "    pre=\${BASH_REMATCH[2]:+${separator@Q}\${BASH_REMATCH[2]}}"
-                        echo "    post=\${BASH_REMATCH[4]:+${separator@Q}\${BASH_REMATCH[4]}}"
+                        echo "    pre=\${BASH_REMATCH[2]:+${separator@Q}\${BASH_REMATCH[2]}}"   # the stuff matched before the value plus a leading separator
+                        echo "    post=\${BASH_REMATCH[4]:+${separator@Q}\${BASH_REMATCH[4]}}"  # the same, but after the value
                         echo "    export $varName=${v@Q}\$pre\$post"
                         echo "else"
                         echo "    export $varName=${v@Q}\${$varName:+:\$$varName}"
+                        echo "fi"
+                    elif [[ "$mode" == 'suffix' ]]; then
+                        # Same match as for `prefix`, but negated
+                        echo "if [[ ! \$$varName =~ ^((.*)${separator@Q})?${v@Q}(${separator@Q}(.*))?$ ]]; then"
+                        echo "    export $varName=\$$varName\${$varName:+${separator@Q}}${v@Q}"
                         echo "fi"
                     else
                         echo "unknown mode $mode!" 1>&2
