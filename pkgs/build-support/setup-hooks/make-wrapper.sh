@@ -37,7 +37,7 @@ makeWrapper() {
 
     assertExecutable "$original"
 
-    dedupAdd() {
+    addValue() {
         local mode="$1"
         local varName="$2"
         local separator="$3"
@@ -56,6 +56,7 @@ makeWrapper() {
             # /bin:/usr/bin:/bin/:/home
             local old_ifs=$IFS
             IFS=$separator
+
             if [[ "$mode" == "prefix" ]]; then
                 # Keep the order of the components as written when
                 # prefixing; normally, they would be added in the
@@ -69,20 +70,17 @@ makeWrapper() {
             for v in $value; do
                 {
                     if [[ "$mode" == 'suffix' ]]; then
-                        echo "if [[ \${$varName:+${separator@Q}\${$varName}${separator@Q}} != *${separator@Q}$v${separator@Q}* ]]; then"
-                        echo "    export $varName=\$$varName\${$varName:+${separator@Q}}$v"
+                        echo "if [[ \${$varName:+${separator@Q}\${$varName}${separator@Q}} != *${separator@Q}${v@Q}${separator@Q}* ]]; then"
+                        echo "    export $varName=\$$varName\${$varName:+${separator@Q}}${v@Q}"
                         echo "fi"
                     elif [[ "$mode" == 'prefix' ]]; then
-                        echo "OLDIFS=\$IFS"
-                        echo "IFS=${separator@Q}"
-                        echo "tmp="
-                        echo "for e in \$$varName; do"
-                        echo "    if [[ \$e != \"$v\" ]]; then"
-                        echo "        tmp=\$tmp\${tmp:+${separator@Q}}\$e"
-                        echo "    fi"
-                        echo "done"
-                        echo "export $varName=$v\${tmp:+${separator@Q}}\$tmp"
-                        echo "IFS=\$OLDIFS"
+                        echo "if [[ \$$varName =~ ^((.*)${separator@Q})?${v@Q}(${separator@Q}(.*))?$ ]]; then"
+                        echo "    pre=\${BASH_REMATCH[2]:+${separator@Q}\${BASH_REMATCH[2]}}"
+                        echo "    post=\${BASH_REMATCH[4]:+${separator@Q}\${BASH_REMATCH[4]}}"
+                        echo "    export $varName=${v@Q}\$pre\$post"
+                        echo "else"
+                        echo "    export $varName=${v@Q}\${$varName:+:\$$varName}"
+                        echo "fi"
                     else
                         echo "unknown mode $mode!" 1>&2
                         exit 1
@@ -123,13 +121,13 @@ makeWrapper() {
             varName="${params[$((n + 1))]}"
             separator="${params[$((n + 2))]}"
             value="${params[$((n + 3))]}"
-            dedupAdd "suffix" "$varName" "$separator" "$value"
+            addValue "suffix" "$varName" "$separator" "$value"
             n=$((n + 3))
         elif [[ ("$p" == "--prefix") ]]; then
             varName="${params[$((n + 1))]}"
             separator="${params[$((n + 2))]}"
             value="${params[$((n + 3))]}"
-            dedupAdd "prefix" "$varName" "$separator" "$value"
+            addValue "prefix" "$varName" "$separator" "$value"
             n=$((n + 3))
         elif [[ "$p" == "--suffix-each" ]]; then
             varName="${params[$((n + 1))]}"
@@ -137,7 +135,7 @@ makeWrapper() {
             values="${params[$((n + 3))]}"
             n=$((n + 3))
             for value in $values; do
-                dedupAdd "suffix" "$varName" "$separator" "$value"
+                addValue "suffix" "$varName" "$separator" "$value"
             done
         elif [[ ("$p" == "--suffix-contents") || ("$p" == "--prefix-contents") ]]; then
             varName="${params[$((n + 1))]}"
@@ -147,9 +145,9 @@ makeWrapper() {
             for fileName in $fileNames; do
                 contents="$(cat "$fileName")"
                 if test "$p" = "--suffix-contents"; then
-                    dedupAdd "suffix" "$varName" "$separator" "$contents"
+                    addValue "suffix" "$varName" "$separator" "$contents"
                 else
-                    dedupAdd "prefix" "$varName" "$separator" "$contents"
+                    addValue "prefix" "$varName" "$separator" "$contents"
                 fi
             done
         elif [[ "$p" == "--add-flags" ]]; then
