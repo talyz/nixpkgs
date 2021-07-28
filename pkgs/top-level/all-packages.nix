@@ -1656,6 +1656,8 @@ in
 
   imageworsener = callPackage ../tools/graphics/imageworsener { };
 
+  img4dc = callPackage ../tools/games/img4dc { };
+
   imgpatchtools = callPackage ../development/mobile/imgpatchtools { };
 
   imgcrypt = callPackage ../applications/virtualization/imgcrypt { };
