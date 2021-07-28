@@ -1,0 +1,12 @@
+diff --git a/Makefile b/Makefile
+index 7e4e7bd..dafd2b3 100644
+--- a/Makefile
++++ b/Makefile
+@@ -34,5 +34,5 @@ clean:
+ mrproper: clean
+ 
+ install: all
+-	${CP} ${OUTPUT} ${DESTDIR}/usr/bin                         # Line 25
+-	${CP} ${HEADERS} ${DESTDIR}/usr/include/cdirip                # Line 26
++	${CP} ${OUTPUT} ${out}/bin
++	${CP} ${HEADERS} ${out}/include/cdirip
