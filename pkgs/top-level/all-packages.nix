@@ -2456,6 +2456,8 @@ in
 
   datovka = libsForQt5.callPackage ../applications/networking/datovka { };
 
+  dc-card-maker = callPackage ../tools/games/dc-card-maker { };
+
   dconf = callPackage ../development/libraries/dconf { };
 
   dcw-gmt = callPackage ../applications/gis/gmt/dcw.nix { };
