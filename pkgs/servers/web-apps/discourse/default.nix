@@ -1,4 +1,4 @@
-{ stdenv, pkgs, makeWrapper, runCommand, lib, writeShellScript
+{ stdenv, system, pkgs, makeWrapper, runCommand, lib, writeShellScript
 , fetchFromGitHub, bundlerEnv, callPackage
 
 , ruby, replace, gzip, gnutar, git, cacert, util-linux, gawk, nettools
@@ -313,7 +313,10 @@ let
       enabledPlugins = plugins;
       plugins = callPackage ./plugins/all-plugins.nix { inherit mkDiscoursePlugin; };
       ruby = rubyEnv.wrappedRuby;
-      tests = import ../../../../nixos/tests/discourse.nix { package = pkgs.discourse.override args; };
+      tests = import ../../../../nixos/tests/discourse.nix {
+        inherit system pkgs;
+        package = pkgs.discourse.override args;
+      };
     };
   };
 in discourse
