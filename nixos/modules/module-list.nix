@@ -261,6 +261,7 @@
   ./security/systemd-confinement.nix
   ./security/tpm2.nix
   ./services/admin/meshcentral.nix
+  ./services/admin/nomachine.nix
   ./services/admin/oxidized.nix
   ./services/admin/pgadmin.nix
   ./services/admin/salt/master.nix
