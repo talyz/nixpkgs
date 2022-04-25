@@ -33,6 +33,9 @@ let
         format value
       );
   };
+
+  serverCfgFile = settingsFmt.generate "server.cfg" cfg.serverSettings;
+  nodeCfgFile = settingsFmt.generate "node.cfg" cfg.nodeSettings;
 in
 {
   options.services.nxserver = with lib; {
@@ -196,8 +199,8 @@ in
 
       "NX/nxnode".source = "${cfg.package}/bin/nxnode";
 
-      "NX/server.cfg".source = settingsFmt.generate "server.cfg" cfg.serverSettings;
-      "NX/node.cfg".source = settingsFmt.generate "node.cfg" cfg.nodeSettings;
+      "NX/server.cfg".source = serverCfgFile;
+      "NX/node.cfg".source = nodeCfgFile;
     };
 
     security.wrappers = {
@@ -217,6 +220,7 @@ in
       after = [ "syslog.target" "network.target" "network-online.target" "display-manager.service" ];
       wants = [ "network-online.target" ];
       bindsTo = [ "display-manager.service" ];
+      restartTriggers = [ serverCfgFile nodeCfgFile ];
 
       serviceConfig = {
         User = "nx";
