@@ -22,7 +22,7 @@ let
             else if lib.isBool v then
               default (if v == true then 1 else 0)
             else if lib.isString v then
-              default (if k == "Name" then ''"${v}"'' else v)
+              default ''"${v}"''
             else
               default v;
         }
