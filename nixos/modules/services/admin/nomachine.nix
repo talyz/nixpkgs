@@ -8,7 +8,7 @@ let
 
   settingsFmt = rec {
     type = with lib.types;
-      attrsOf (nullOr (oneOf [ str int bool attrs ]));
+      attrsOf (nullOr (oneOf [ str int bool attrs (listOf str) ]));
 
     format = value:
       lib.generators.toKeyValue
@@ -19,6 +19,8 @@ let
             in
             if lib.isAttrs v then
               "Section \"${k}\"\n" + (format v) + "EndSection"
+            else if lib.isList v then
+              default ''"${lib.concatStringsSep "," v}"''
             else if lib.isBool v then
               default (if v == true then 1 else 0)
             else if lib.isString v then
@@ -125,7 +127,14 @@ in
       serverSettings = {
         ConfigFileVersion = "4.0";
 
-        AvailableSessionTypes = lib.mkDefault "unix-remote,unix-console,unix-default,unix-application,physical-desktop,shadow";
+        AvailableSessionTypes = lib.mkDefault [
+          "unix-remote"
+          "unix-console"
+          "unix-default"
+          "unix-application"
+          "physical-desktop"
+          "shadow"
+        ];
 
         EnablePasswordDB = lib.mkDefault false;
 
@@ -143,7 +152,14 @@ in
       nodeSettings = {
         ConfigFileVersion = "4.0";
 
-        AvailableSessionTypes = lib.mkDefault "unix-remote,unix-console,unix-default,unix-application,physical-desktop,shadow";
+        AvailableSessionTypes = lib.mkDefault [
+          "unix-remote"
+          "unix-console"
+          "unix-default"
+          "unix-application"
+          "physical-desktop"
+          "shadow"
+        ];
 
         AudioInterface = lib.mkDefault "pulseaudio";
 
