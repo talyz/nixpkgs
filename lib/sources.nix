@@ -185,12 +185,12 @@ let
   # not exported, used for commitIdFromGitRepo
   _commitIdFromGitRepoOrError =
     let readCommitFromFile = file: path:
-        let fileName       = path + "/${file}";
+        let fileName       = path + ("/" + file);
             packedRefsName = path + "/packed-refs";
             absolutePath   = base: path:
               if lib.hasPrefix "/" path
               then path
-              else toString (/. + "${base}/${path}");
+              else base + ("/" + path);
         in if pathIsRegularFile path
            # Resolve git worktrees. See gitrepository-layout(5)
            then
@@ -204,7 +204,7 @@ let
                                     else gitDir;
                       commonDir'  = lib.removeSuffix "/" commonDir'';
                       commonDir   = absolutePath gitDir commonDir';
-                      refFile     = lib.removePrefix "${commonDir}/" "${gitDir}/${file}";
+                      refFile     = builtins.unsafeDiscardStringContext (lib.removePrefix "${commonDir}/" "${gitDir}/${file}");
                   in readCommitFromFile refFile commonDir
 
            else if pathIsRegularFile fileName
