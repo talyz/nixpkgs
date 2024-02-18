@@ -105,6 +105,19 @@ in
         '';
       };
 
+      developmentMode = mkOption {
+        type = bool;
+        default = false;
+        example = true;
+        description = lib.mdDoc ''
+          Whether to run Keycloak in development mode (see
+          <https://www.keycloak.org/server/configuration#_starting_keycloak_in_development_mode>
+          for details). This should only be used for testing,
+          developing themes and such - never for production
+          deployments!
+        '';
+      };
+
       sslCertificate = mkOption {
         type = nullOr path;
         default = null;
@@ -663,7 +676,7 @@ in
             '' + ''
               export KEYCLOAK_ADMIN=admin
               export KEYCLOAK_ADMIN_PASSWORD=${escapeShellArg cfg.initialAdminPassword}
-              kc.sh start --optimized
+              kc.sh start${optionalString cfg.developmentMode "-dev"} --optimized
             '';
           };
 
