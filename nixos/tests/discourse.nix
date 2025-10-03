@@ -56,9 +56,7 @@ in
 
       environment.systemPackages = [ pkgs.jq ];
 
-      services.postgresql.package = pkgs.postgresql_15.withPackages (ps: [
-        ps.pgvector
-      ]);
+      services.postgresql.package = pkgs.postgresql_15;
 
       services.discourse = {
         enable = true;

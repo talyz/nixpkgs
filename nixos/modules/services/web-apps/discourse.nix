@@ -17,7 +17,7 @@ let
   upstreamPostgresqlVersion = lib.getVersion pkgs.postgresql_15;
 
   postgresqlPackage =
-    if config.services.postgresql.enable then config.services.postgresql.package else pkgs.postgresql;
+    if config.services.postgresql.enable then config.services.postgresql.finalPackage else pkgs.postgresql;
 
   postgresqlVersion = lib.getVersion postgresqlPackage;
 
@@ -540,7 +540,7 @@ in
     assertions = [
       {
         assertion = (cfg.database.host != null) -> (cfg.database.passwordFile != null);
-        message = "When services.gitlab.database.host is customized, services.discourse.database.passwordFile must be set!";
+        message = "When services.discourse.database.host is customized, services.discourse.database.passwordFile must be set!";
       }
       {
         assertion = cfg.hostname != "";
@@ -554,17 +554,6 @@ in
           "The PostgreSQL version recommended for use with Discourse is ${upstreamPostgresqlVersion}, you're using ${postgresqlVersion}. "
           + "Either update your PostgreSQL package to the correct version or set services.discourse.database.ignorePostgresqlVersion. "
           + "See https://nixos.org/manual/nixos/stable/index.html#module-postgresql for details on how to upgrade PostgreSQL.";
-      }
-      {
-        assertion =
-          databaseActuallyCreateLocally
-          -> (builtins.elem config.services.postgresql.package.pkgs.pgvector (
-            # installedExtensions doesn't exist when when the postgresql package has no extensions
-            config.services.postgresql.package.installedExtensions or [ ]
-          ));
-        message =
-          "Discourse requires the PostgreSQL pgvector extension. Please extend services.postgresql.package accordingly. "
-          + "See https://nixos.org/manual/nixos/stable/index.html#module-postgresql for details.";
       }
     ];
 
@@ -705,6 +694,9 @@ in
 
     services.postgresql = lib.mkIf databaseActuallyCreateLocally {
       enable = true;
+      extensions = ps: [
+        ps.pgvector
+      ];
       ensureUsers = [ { name = "discourse"; } ];
     };
 
